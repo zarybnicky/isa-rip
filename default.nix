@@ -1,7 +1,12 @@
 { pkgs ? import <nixpkgs> {} }:
 with pkgs;
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   name = "isa-rip";
   src = ./.;
-  nativeBuildInputs = [ libpcap pandoc haskellPackages.pandoc-citeproc ];
+  nativeBuildInputs = [
+    libpcap
+    pandoc
+    haskellPackages.pandoc-citeproc
+    texlive.combined.scheme-small
+  ];
 }
