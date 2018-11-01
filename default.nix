@@ -3,5 +3,5 @@ with pkgs;
 stdenv.mkDerivation rec {
   name = "isa-rip";
   src = ./.;
-  nativeBuildInputs = [ libpcap pandoc ];
+  nativeBuildInputs = [ libpcap pandoc haskellPackages.pandoc-citeproc ];
 }
