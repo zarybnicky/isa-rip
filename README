@@ -1,0 +1,29 @@
+Tools for sniffing and generating messages of simple distance-vector protocols
+Part of the subject ISA (BUT, 2018/19)
+Author: Jakub Zárybnický
+
+
+This goal of this project is to create three executables, myripsniffer, myripresponse, and myriprequest.
+
+`myripsniffer` uses libpcap to capture and print RIP(v1, v2, ng) packets.
+Example usage: `./myripsniffer -i eth0`
+
+`myripresponse` forges RIPng response messages
+Example usage: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
+
+`myriprequest` forges RIPng request messages
+Example usage: TODO
+
+
+To compile the program, just use the provided Makefile:
+`make` will build all three executables,
+`make clean` will clean all built files
+
+
+This archive contains the folliwing files:
+* README - this readme
+* manual.pdf - which contains detailed descriptions of both RIP and the programs
+* Makefile
+* myriprequest.c
+* myripresponse.c
+* myripsniffer.c - the source code for the programs

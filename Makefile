@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS+=-Wall -g -DUSE_SLEEP
+CFLAGS+=-Wall -g
 LDFLAGS+=-lpcap
 EXE=$(patsubst %.c,%,$(wildcard *.c))
 
