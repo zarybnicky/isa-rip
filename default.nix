@@ -8,5 +8,7 @@ stdenv.mkDerivation {
     pandoc
     haskellPackages.pandoc-citeproc
     texlive.combined.scheme-small
+    tcpdump
+    tcpreplay
   ];
 }
