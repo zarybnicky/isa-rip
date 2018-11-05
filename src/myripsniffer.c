@@ -75,10 +75,10 @@ void sniff_handler(u_char *args, const struct pcap_pkthdr *header, const u_char 
   const struct ip *ip;
   const struct ip6_hdr *ip6;
   const struct udphdr *udp;
-  char addr[INET6_ADDRSTRLEN];
-  int rip_len;
   const struct rip *rip;
   const struct rip6 *rip6;
+  char addr[INET6_ADDRSTRLEN];
+  int rip_len;
 
   switch (ntohs(eptr->ether_type)) {
   case ETHERTYPE_IP:
