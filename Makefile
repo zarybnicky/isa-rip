@@ -21,6 +21,18 @@ manual: manual.pdf
 clean:
 	rm -f $(EXE) $(DEP) *~ manual.pdf
 
+test-ripv1: test/ripv1.pcap
+	sudo tcpreplay -i lo -tK $<
+
+test-ripv2: test/ripv2.pcap
+	sudo tcpreplay -i lo -tK $<
+
+test-ripng: test/ripng.pcap
+	sudo tcpreplay -i lo -tK $<
+
+test-combined: test/onlyrip-isa.pcapng
+	sudo tcpreplay -i lo -tK $<
+
 .PHONY: all clean manual test-ripv1 test-ripv2 test-ripng
 
 %.d: %.c
