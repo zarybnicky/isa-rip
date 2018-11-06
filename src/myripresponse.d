@@ -1,1 +1,1 @@
-myripresponse.o: src/myripresponse.c
+myripresponse.o: src/myripresponse.c src/rip.h

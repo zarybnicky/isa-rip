@@ -1,1 +1,1 @@
-myripsniffer.o: src/myripsniffer.c
+myripsniffer.o: src/myripsniffer.c src/rip.h
