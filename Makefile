@@ -33,6 +33,9 @@ test-ripng: test/ripng.pcap
 test-combined: test/onlyrip-isa.pcapng
 	sudo tcpreplay -i lo -tK $<
 
+test-md5: test/rip-md5.pcapng
+	sudo tcpreplay -i lo -tK $<
+
 .PHONY: all clean manual test-ripv1 test-ripv2 test-ripng
 
 %.d: %.c
