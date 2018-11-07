@@ -17,6 +17,7 @@
 #define RIPNG_NEXT_HOP 0xff
 #define	RIPNG_DEST "ff02::9"
 #define RIPNG_PORT 521
+#define RIPNG_PORT_STR "521"
 
 struct rip_entry {
   u_short rip_family;

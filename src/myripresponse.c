@@ -9,95 +9,126 @@
 #include "rip.h"
 
 #define USAGE "Usage: %s -i INTERFACE -r IPv6/MASK [-n IPv6] [-m METRIC] [-t TAG]\n"
+#define ERR_USAGE(...)                                                  \
+  do {                                                                \
+    fprintf(stderr, __VA_ARGS__);                                     \
+    fprintf(stderr, USAGE, argv[0]);                                  \
+    exit(EXIT_FAILURE);                                               \
+  } while(0);
+#define ERR(...) do { fprintf(stderr, __VA_ARGS__); exit(EXIT_FAILURE); } while(0);
+#define SOCK_WRAP(sock, err, cond)               \
+  if (cond) {                                    \
+    perror("if_nametoindex()");                  \
+    close(sock);                                 \
+    exit(EXIT_FAILURE);                          \
+  }
 
 int main (int argc, char *argv[]) {
   int opt;
-  char *interface = NULL,
-    *opt_network = NULL,
-    *opt_next_hop = NULL,
-    *opt_metric = NULL,
-    *opt_tag = NULL;
+  char *prefix = NULL, *err = NULL, *interface = NULL;
+
+  struct rip6hdr header = { .rip6_cmd = RIP_CMD_RESPONSE, .rip6_ver = 1 };
+  struct rip6_entry entry = {};
+  struct rip6_entry next_hop = { .rip6_metric = RIPNG_NEXT_HOP };
 
   while ((opt = getopt(argc, argv, "i:r:n:m:t:")) != -1) {
     switch (opt) {
     case 'i':
+      //Interface processing (getaddrinfo) happens later
       interface = optarg;
       break;
+
     case 'r':
-      opt_network = optarg;
+      //Split optarg at forward slash
+      prefix = strchr(optarg, '/');
+      if (prefix == NULL)
+        ERR("The separator slash is missing in the specified network\n");
+      prefix[0] = '\0';
+      prefix += 1;
+      //Now the address is in `optarg` and prefix in `prefix`
+
+      //Parse the IPv6 address
+      if (inet_pton(AF_INET6, optarg, &entry.rip6_dest) < 1)
+        ERR("The specified network doesn't contain a valid IPv6 address\n");
+
+      //Parse prefix
+      entry.rip6_prefix = strtol(prefix, &err, 10);
+      if (*err != '\0')
+        ERR("The specified prefix isn't a valid number\n");
       break;
+
     case 'n':
-      opt_next_hop = optarg;
+      //Parse the next hop
+      if (inet_pton(AF_INET6, optarg, &next_hop.rip6_dest) < 1)
+        ERR("The specified next hop doesn't contain a valid IPv6 address\n");
       break;
+
     case 'm':
-      opt_metric = optarg;
+      //Parse the metric
+      entry.rip6_metric = strtol(optarg, &err, 10);
+      if (*err != '\0')
+        ERR("The specified metric isn't a valid number\n");
       break;
+
     case 't':
-      opt_tag = optarg;
+      //Parse the tag
+      entry.rip6_tag = htons(strtol(optarg, &err, 10));
+      if (*err != '\0')
+        ERR("The specified tag isn't a valid number\n");
       break;
+
     default:
       fprintf(stderr, USAGE, argv[0]);
       exit(EXIT_FAILURE);
     }
   }
-  if (interface == NULL) {
-    fprintf(stderr, "Missing required option `-i interface`\n");
-    fprintf(stderr, USAGE, argv[0]);
-    exit(EXIT_FAILURE);
-  }
-  if (opt_network == NULL) {
-    fprintf(stderr, "Missing required option `-r IPv6/MASK`\n");
-    fprintf(stderr, USAGE, argv[0]);
-    exit(EXIT_FAILURE);
-  }
-  if (opt_next_hop == NULL) {
-    opt_next_hop = "::";
-  }
-  if (opt_metric == NULL) {
-    opt_metric = "1";
-  }
-  if (opt_tag == NULL) {
-    opt_tag = "0";
-  }
+  if (interface == NULL)
+    ERR_USAGE("Missing required option `-i interface`\n")
+  if (prefix == NULL)
+    ERR_USAGE("Missing required option `-r IPv6/MASK`\n")
 
+  //Try to find a suitable address from which to send packets that is:
+  //IPv6, UDP, multicast-enabled, %iface
   struct addrinfo hints = { .ai_family = AF_INET6, .ai_socktype = SOCK_DGRAM };
   struct addrinfo *result, *rp;
-
+  int sock;
   char dest[256] = { RIPNG_DEST "%" };
   strcat(dest, interface);
-  int s = getaddrinfo(dest, "521", &hints, &result);
-  if (s != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-    exit(EXIT_FAILURE);
-  }
-  int sock;
+  int s = getaddrinfo(dest, RIPNG_PORT_STR, &hints, &result);
+  if (s != 0) ERR("getaddrinfo: %s\n", gai_strerror(s))
   for (rp = result; rp != NULL; rp = rp->ai_next) {
+    //Try this candidate addrinfo
     sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sock == -1) {
+      perror("socket");
       continue;
     }
-    if (bind(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-      break;
+    if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0) {
+      perror("bind");
+      continue;
     }
+    break; //Success, both socket() and bind() succeeded
   }
   if (rp == NULL) {
-    fprintf(stderr, "Failed to find an interface\n");
-    exit(EXIT_FAILURE);
+    ERR("Failed to find an interface or to bind to one\n");
   }
   freeaddrinfo(result);
 
-  //Bind to the right interface and set multicast
+  //Find iface index and set MULTICAST_IF
   uint ifindex = if_nametoindex(interface);
-  if (ifindex == 0) {
-    perror("if_nametoindex()");
-    close(sock);
-    exit(EXIT_FAILURE);
-  }
-  if (setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex)) < 0) {
-    perror("setsockopt(IPV6_MULTICAST_IF)");
-    close(sock);
-    exit(EXIT_FAILURE);
-  }
+  SOCK_WRAP(sock, "if_nametoindex()", ifindex == 0);
+  SOCK_WRAP(sock, "setsockopt(IPV6_MULTICAST_IF)",
+            setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex)) < 0);
+
+  //Copy all three parts into the buffer
+  char buffer[512] = {};
+  uint buflen = 0;
+  memcpy(buffer, &header, sizeof(header));
+  buflen += sizeof(header);
+  memcpy(buffer + buflen, &next_hop, sizeof(next_hop));
+  buflen += sizeof(next_hop);
+  memcpy(buffer + buflen, &entry, sizeof(entry));
+  buflen += sizeof(entry);
 
   //Create the multicast address
   struct sockaddr_in6 target;
@@ -107,46 +138,7 @@ int main (int argc, char *argv[]) {
   target.sin6_flowinfo = 0;
   target.sin6_scope_id = 0;
 
-  char buffer[512] = {};
-  uint buflen = 0;
-
-  struct rip6hdr header = { .rip6_cmd = RIP_CMD_RESPONSE, .rip6_ver = 1 };
-  memcpy(buffer, &header, sizeof(header));
-  buflen += sizeof(header);
-
-  struct rip6_entry entry = {};
-  struct in6_addr network;
-  char *prefix, *prefix_err;
-  prefix = strchr(opt_network, '/');
-  if (prefix == NULL) {
-    fprintf(stderr, "The separator slash is missing in the specified network\n");
-    exit(EXIT_FAILURE);
-  }
-  prefix[0] = '\0';
-  prefix += 1;
-  if (inet_pton(AF_INET6, opt_network, &network) < 1) {
-    fprintf(stderr, "The specified network doesn't contain a valid IPv6 address\n");
-    exit(EXIT_FAILURE);
-  }
-  entry.rip6_dest = network;
-  entry.rip6_prefix = strtol(prefix, &prefix_err, 10);
-  if (*prefix_err != '\0') {
-    fprintf(stderr, "The specified prefix isn't a valid number\n");
-    exit(EXIT_FAILURE);
-  }
-  memcpy(buffer + buflen, &entry, sizeof(entry));
-  buflen += sizeof(entry);
-
-  struct rip6_entry next_hop = { .rip6_metric = RIPNG_NEXT_HOP };
-  memcpy(buffer + buflen, &next_hop, sizeof(next_hop));
-  buflen += sizeof(next_hop);
-
-
-  if (sendto(sock, buffer, buflen, 0, (struct sockaddr *) &target, sizeof(target)) < 0) {
-    perror("sendto()");
-    close(sock);
-    exit(EXIT_FAILURE);
-  }
-
+  SOCK_WRAP(sock, "sendto()",
+            sendto(sock, buffer, buflen, 0, (struct sockaddr *) &target, sizeof(target)) < 0);
   return 0;
 }
