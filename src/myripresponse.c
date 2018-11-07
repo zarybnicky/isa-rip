@@ -28,7 +28,7 @@ int main (int argc, char *argv[]) {
   char *prefix = NULL, *err = NULL, *interface = NULL;
 
   struct rip6hdr header = { .rip6_cmd = RIP_CMD_RESPONSE, .rip6_ver = 1 };
-  struct rip6_entry entry = {};
+  struct rip6_entry entry = { .rip6_metric = 1 };
   struct rip6_entry next_hop = { .rip6_metric = RIPNG_NEXT_HOP };
 
   while ((opt = getopt(argc, argv, "i:r:n:m:t:")) != -1) {
@@ -87,8 +87,8 @@ int main (int argc, char *argv[]) {
   if (prefix == NULL)
     ERR_USAGE("Missing required option `-r IPv6/MASK`\n")
 
-  //Try to find a suitable address from which to send packets that is:
-  //IPv6, UDP, multicast-enabled, %iface
+  //Try to find suitable parameters for the sending socket, that is:
+  //IPv6, UDP, multicast-enabled, able to reach ff02::9%iface at port 521
   struct addrinfo hints = { .ai_family = AF_INET6, .ai_socktype = SOCK_DGRAM };
   struct addrinfo *result, *rp;
   int sock;
@@ -119,14 +119,19 @@ int main (int argc, char *argv[]) {
   SOCK_WRAP(sock, "if_nametoindex()", ifindex == 0);
   SOCK_WRAP(sock, "setsockopt(IPV6_MULTICAST_IF)",
             setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex)) < 0);
+  uint hops = 255;
+  SOCK_WRAP(sock, "setsockopt(IPV6_MULTICAST_HOPS)",
+            setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops)) < 0);
 
   //Copy all three parts into the buffer
   char buffer[512] = {};
   uint buflen = 0;
   memcpy(buffer, &header, sizeof(header));
   buflen += sizeof(header);
-  memcpy(buffer + buflen, &next_hop, sizeof(next_hop));
-  buflen += sizeof(next_hop);
+  if (!IN6_IS_ADDR_UNSPECIFIED(&next_hop.rip6_dest)) {
+    memcpy(buffer + buflen, &next_hop, sizeof(next_hop));
+    buflen += sizeof(next_hop);
+  }
   memcpy(buffer + buflen, &entry, sizeof(entry));
   buflen += sizeof(entry);
 
