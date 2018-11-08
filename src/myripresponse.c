@@ -24,7 +24,7 @@
   }
 
 int main (int argc, char *argv[]) {
-  int opt;
+  int opt, tmp;
   char *prefix = NULL, *err = NULL, *interface = NULL;
 
   struct rip6hdr header = { .rip6_cmd = RIP_CMD_RESPONSE, .rip6_ver = 1 };
@@ -45,16 +45,19 @@ int main (int argc, char *argv[]) {
         ERR("The separator slash is missing in the specified network\n");
       prefix[0] = '\0';
       prefix += 1;
-      //Now the address is in `optarg` and prefix in `prefix`
+      //Now the \0-terminated address is in `optarg` and prefix is in `prefix`
 
       //Parse the IPv6 address
       if (inet_pton(AF_INET6, optarg, &entry.rip6_dest) < 1)
         ERR("The specified network doesn't contain a valid IPv6 address\n");
 
       //Parse prefix
-      entry.rip6_prefix = strtol(prefix, &err, 10);
+      tmp = strtol(prefix, &err, 10);
       if (*err != '\0')
         ERR("The specified prefix isn't a valid number\n");
+      if (tmp < 0 || tmp > 128)
+        ERR("The specified prefix is out of range (0-128)\n");
+      entry.rip6_prefix = tmp;
       break;
 
     case 'n':
@@ -65,16 +68,22 @@ int main (int argc, char *argv[]) {
 
     case 'm':
       //Parse the metric
-      entry.rip6_metric = strtol(optarg, &err, 10);
+      tmp = strtol(optarg, &err, 10);
       if (*err != '\0')
         ERR("The specified metric isn't a valid number\n");
+      if (tmp < 0 || tmp > 16)
+        ERR("The specified metric is out of range (0-16)\n");
+      entry.rip6_metric = tmp;
       break;
 
     case 't':
       //Parse the tag
-      entry.rip6_tag = htons(strtol(optarg, &err, 10));
+      tmp = htons(strtol(optarg, &err, 10));
       if (*err != '\0')
         ERR("The specified tag isn't a valid number\n");
+      if (tmp < 0 || tmp > 65535)
+        ERR("The specified tag is out of range (0-65535)\n");
+      entry.rip6_tag = tmp;
       break;
 
     default:
