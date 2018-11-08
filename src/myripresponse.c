@@ -115,6 +115,16 @@ int main (int argc, char *argv[]) {
       perror("socket");
       continue;
     }
+
+    char buffer[INET6_ADDRSTRLEN];
+    if (getnameinfo((struct sockaddr *) rp->ai_addr, rp->ai_addrlen,
+                    buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST) != 0) {
+      perror("getnameinfo");
+      exit(EXIT_FAILURE);
+    }
+    printf("Binding to port %d at %s\n",
+           ntohs(((struct sockaddr_in6 *) rp->ai_addr)->sin6_port), buffer);
+
     //Bind to the privileged source port 521 - this requires root
     if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0) {
       perror("bind");
@@ -158,7 +168,9 @@ int main (int argc, char *argv[]) {
   target.sin6_flowinfo = 0;
   target.sin6_scope_id = 0;
 
+  printf("Sending message... ");
   SOCK_WRAP(sock, "sendto()",
             sendto(sock, buffer, buflen, 0, (struct sockaddr *) &target, sizeof(target)) < 0);
+  printf("OK\n");
   return 0;
 }
