@@ -1,21 +1,21 @@
-#include <stdio.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "rip.h"
 
 #define USAGE "Usage: %s -i INTERFACE -r IPv6/MASK [-n IPv6] [-m METRIC] [-t TAG]\n"
-#define ERR_USAGE(...)                                                  \
-  do {                                                                \
-    fprintf(stderr, __VA_ARGS__);                                     \
-    fprintf(stderr, USAGE, argv[0]);                                  \
-    exit(EXIT_FAILURE);                                               \
+#define ERR_USAGE(...)                             \
+  do {                                           \
+    fprintf(stderr, USAGE, argv[0]);             \
+    ERR(__VA_ARGS__);                            \
   } while(0);
-#define ERR(...) do { fprintf(stderr, __VA_ARGS__); exit(EXIT_FAILURE); } while(0);
+#define ERR(...) do {                              \
+    fprintf(stderr, __VA_ARGS__);                \
+    exit(EXIT_FAILURE);                          \
+  } while(0);
 #define SOCK_WRAP(sock, err, cond)               \
   if (cond) {                                    \
     perror("if_nametoindex()");                  \
@@ -71,7 +71,7 @@ int main (int argc, char *argv[]) {
       tmp = strtol(optarg, &err, 10);
       if (*err != '\0')
         ERR("The specified metric isn't a valid number\n");
-      if (tmp < 0 || tmp > 16)
+      if (tmp < 0 || (tmp > 16 && tmp != 255))
         ERR("The specified metric is out of range (0-16)\n");
       entry.rip6_metric = tmp;
       break;
@@ -92,19 +92,22 @@ int main (int argc, char *argv[]) {
     }
   }
   if (interface == NULL)
-    ERR_USAGE("Missing required option `-i interface`\n")
+    ERR_USAGE("Missing required option `-i interface`\n");
   if (prefix == NULL)
-    ERR_USAGE("Missing required option `-r IPv6/MASK`\n")
+    ERR_USAGE("Missing required option `-r IPv6/MASK`\n");
 
-  //Try to find suitable parameters for the sending socket, that is:
+  //Craft the target addr: ff02::9%iface
+  char dest[256] = { RIPNG_DEST "%" };
+  strcat(dest, interface);
+
+  //Try to find suitable parameters for the sending socket, so that it it:
   //IPv6, UDP, multicast-enabled, able to reach ff02::9%iface at port 521
   struct addrinfo hints = { .ai_family = AF_INET6, .ai_socktype = SOCK_DGRAM };
   struct addrinfo *result, *rp;
   int sock;
-  char dest[256] = { RIPNG_DEST "%" };
-  strcat(dest, interface);
   int s = getaddrinfo(dest, RIPNG_PORT_STR, &hints, &result);
-  if (s != 0) ERR("getaddrinfo: %s\n", gai_strerror(s))
+  if (s != 0)
+    ERR("getaddrinfo: %s\n", gai_strerror(s))
   for (rp = result; rp != NULL; rp = rp->ai_next) {
     //Try this candidate addrinfo
     sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -112,18 +115,19 @@ int main (int argc, char *argv[]) {
       perror("socket");
       continue;
     }
+    //Bind to the privileged source port 521 - this requires root
     if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0) {
       perror("bind");
       continue;
     }
-    break; //Success, both socket() and bind() succeeded
+    break; //Got it, both socket() and bind() succeeded
   }
   if (rp == NULL) {
     ERR("Failed to find an interface or to bind to one\n");
   }
   freeaddrinfo(result);
 
-  //Find iface index and set MULTICAST_IF
+  //Find iface index and set MULTICAST_IF and _HOPS
   uint ifindex = if_nametoindex(interface);
   SOCK_WRAP(sock, "if_nametoindex()", ifindex == 0);
   SOCK_WRAP(sock, "setsockopt(IPV6_MULTICAST_IF)",
@@ -133,11 +137,13 @@ int main (int argc, char *argv[]) {
             setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops)) < 0);
 
   //Copy all three parts into the buffer
-  char buffer[512] = {};
+  char buffer[512] = { 0 };
   uint buflen = 0;
   memcpy(buffer, &header, sizeof(header));
   buflen += sizeof(header);
   if (!IN6_IS_ADDR_UNSPECIFIED(&next_hop.rip6_dest)) {
+    //We only need to send next hop if it's non-zero, as zero (originator) is the
+    //implicit next hop
     memcpy(buffer + buflen, &next_hop, sizeof(next_hop));
     buflen += sizeof(next_hop);
   }
