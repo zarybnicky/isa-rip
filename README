@@ -1,29 +1,34 @@
-Tools for sniffing and generating messages of simple distance-vector protocols
-Part of the subject ISA (BUT, 2018/19)
-Author: Jakub Zárybnický
+Nástroje monitorující a generující zprávy jednoduchých distance-vector protokolů
+ISA 2018/19, FIT, VUT Brno
+Autor: Jakub Zárybnický
 
 
-This goal of this project is to create three executables, myripsniffer, myripresponse, and myriprequest.
+C9lem tohoto projektu je vytvořit tři programy: myripsniffer, myripresponse, and myriprequest.
 
-`myripsniffer` uses libpcap to capture and print RIP(v1, v2, ng) packets.
-Example usage: `./myripsniffer -i eth0`
+`myripsniffer` používá libpcap pro zachycování tisk RIPv1/v2/ng zpráv.
+Příklad použití: `./myripsniffer -i eth0`
 
-`myripresponse` forges RIPng response messages
-Example usage: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
+`myripresponse` posílá podvržené zprávy RIPng Response.
+Příklad použití: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
 
-`myriprequest` forges RIPng request messages
-Example usage: TODO
-
-
-To compile the program, just use the provided Makefile:
-`make` will build all three executables,
-`make clean` will clean all built files
+`myriprequest` (nejjednodušší možná varianta) posílá požadavek na celou routovací
+tabulku všech RIPng routerů v síti.
+Příklad použití: `./myriprequest -i eth0`
 
 
-This archive contains the folliwing files:
-* README - this readme
-* manual.pdf - which contains detailed descriptions of both RIP and the programs
+Pro sestavení programu stačí použít přiložený Makefile:
+`make` sestaví všechny tři programy
+`make manual` sestaví manual.pdf (vyžaduje pandoc a pdflatex)
+`make clean` smaže všechny generované soubory - tři programy i manual.pdf
+
+
+Tento archiv obsahuje následující soubory:
+* README - toto readme
+* manual.pdf - obsahuje popis RIP, implementace programů a další náležitosti dle zadání
 * Makefile
-* myriprequest.c
-* myripresponse.c
-* myripsniffer.c - the source code for the programs
+* src/rip.h
+* src/myriprequest.c
+* src/myripresponse.c
+* src/myripsniffer.c - zdrojové kódy programů
+* doc/manual.md - zdrojový text manuálu
+* doc/manual.bib - bibliografie manuálu
