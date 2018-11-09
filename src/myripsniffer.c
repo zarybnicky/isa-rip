@@ -1,3 +1,9 @@
+/*
+ * ISA18: Tools for monitoring and sniffing RIP messages
+ * FIT VUT Brno
+ * Author: xzaryb00 - Jakub Zarybnický (xzaryb00)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,6 +16,9 @@
 #include <netinet/ether.h>
 #include <netinet/udp.h>
 #include "rip.h"
+#include "utils.h"
+
+#define USAGE "Usage: %s -i INTERFACE\n"
 
 void print_ripv1_entry(struct rip_entry *e) {
   if (ntohl(e->body.rip_metric) == RIP_UNREACHABLE) {
@@ -165,13 +174,10 @@ void sniff_handler(u_char *args, const struct pcap_pkthdr *header, const u_char 
   }
 }
 
-void usage(char *argv[]) {
-  fprintf(stderr, "Usage: %s -i INTERFACE\n", argv[0]);
-}
-
 int main (int argc, char *argv[]) {
   int opt;
   char *interface = NULL;
+  char errbuf[PCAP_ERRBUF_SIZE];
 
   while ((opt = getopt(argc, argv, "i:")) != -1) {
     switch (opt) {
@@ -179,46 +185,33 @@ int main (int argc, char *argv[]) {
       interface = optarg;
       break;
     default:
-      usage(argv);
+      fprintf(stderr, USAGE, argv[0]);
       exit(EXIT_FAILURE);
     }
   }
-  if (interface == NULL) {
-    fprintf(stderr, "Missing required option `-i INTERFACE`\n");
-    usage(argv);
-    exit(EXIT_FAILURE);
-  }
+  if (interface == NULL)
+    ERR_USAGE("Missing required option `-i INTERFACE`\n");
 
-  char errbuf[PCAP_ERRBUF_SIZE];  // constant defined in pcap.h
-  bpf_u_int32 netaddr;            // network address configured at the input device
-  bpf_u_int32 mask;               // network mask of the input device
-  if (pcap_lookupnet(interface, &netaddr, &mask, errbuf) == -1) {
-    fprintf(stderr, "pcap_lookupnet() failed: %s\n", errbuf);
-    exit(EXIT_FAILURE);
-  }
+  //Find out the parameters of the selected interface
+  bpf_u_int32 addr, mask;
+  if (pcap_lookupnet(interface, &addr, &mask, errbuf) == -1)
+    ERR("pcap_lookupnet: %s\n", errbuf);
 
+  //Opening the device
   pcap_t *handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
-  if (handle == NULL) {
-    fprintf(stderr, "pcap_open_live() failed: %s\n", errbuf);
-    exit(EXIT_FAILURE);
-  }
+  if (handle == NULL)
+    ERR("pcap_open_live: %s\n", errbuf);
 
+  //Compiling and setting the filter (RIP_FILTER)
   struct bpf_program filter;
-  if (pcap_compile(handle, &filter, RIP_FILTER, 0, netaddr) == -1) {
-    fprintf(stderr, "pcap_compile() failed: %s\n", pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
-
-  if (pcap_setfilter(handle, &filter) == -1) {
-    fprintf(stderr, "pcap_setfilter() failed: %s\n", pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
+  if (pcap_compile(handle, &filter, RIP_FILTER, 0, addr) == -1)
+    ERR("pcap_compile: %s\n", pcap_geterr(handle));
+  if (pcap_setfilter(handle, &filter) == -1)
+    ERR("pcap_setfilter: %s\n", pcap_geterr(handle));
 
   fprintf(stderr, "Listening...\n");
-  if (pcap_loop(handle, -1, sniff_handler, NULL) == -1) {
-    fprintf(stderr, "pcap_loop() failed: %s\n", pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
+  if (pcap_loop(handle, -1, sniff_handler, NULL) == -1)
+    ERR("pcap_loop: %s\n", pcap_geterr(handle));
 
   pcap_close(handle);
   return 0;

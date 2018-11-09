@@ -1,6 +1,6 @@
 Nástroje monitorující a generující zprávy jednoduchých distance-vector protokolů
 ISA 2018/19, FIT, VUT Brno
-Autor: Jakub Zárybnický
+Auhor: Jakub Zarybnický (xzaryb00)
 
 
 C9lem tohoto projektu je vytvořit tři programy: myripsniffer, myripresponse, and myriprequest.
@@ -8,10 +8,10 @@ C9lem tohoto projektu je vytvořit tři programy: myripsniffer, myripresponse, a
 `myripsniffer` používá libpcap pro zachycování tisk RIPv1/v2/ng zpráv.
 Příklad použití: `./myripsniffer -i eth0`
 
-`myripresponse` posílá podvržené zprávy RIPng Response.
+`myripresponse` posílá podvržené odpovědní zprávy RIPng.
 Příklad použití: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
 
-`myriprequest` (nejjednodušší možná varianta) posílá požadavek na celou routovací
+`myriprequest` (jeho nejjednodušší možná varianta) posílá požadavek na celou routovací
 tabulku všech RIPng routerů v síti.
 Příklad použití: `./myriprequest -i eth0`
 

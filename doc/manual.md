@@ -1,48 +1,53 @@
 ---
-title: Tools for sniffing and generating messages of simple distance-vector protocols
+title: Nástroje monitorující a generující zprávy jednoduchých distance-vector protokolů
 author: Jakub Zárybnický
-date: November 2018
+date: Listopad 2018
 documentclass: report
 ---
 
-# Introduction to RIP
+# Úvod do RIP
 ## RIPv1
 @pizza2000identification
 
 ## RIPv2
 ## RIPng
 
-# RIP Sniffer
-## Design
-## Usage
-To use the sniffer, simply find the name of the interface you want to listen on,
-and call:
+# Odposlouchávání RIP
+## Návrh
+## Použití
+Pro odposlouchávání RIP zpráv stačí zjistit jméno rozhraní, na kterém chcete
+poslouchat:
 
     ./myripsniffer -i INTERFACE
 
-The sniffer will print a human-readable version of the caught packets on
-`stdout`. Any errors will be printed out to `stderr` and the sniffer will exit
-with a non-zero error code.
+Program pak bude na stdout vypisovat obsah zachycených RIP zpráv. Jakékoliv
+chyby budou vypisovány na stderr a program v případě chyby skončí s nenulovým
+kódem.
 
-# RIPng Response
-## Design
-## Usage
-To use the RIPng response crafter, you'll need the name of your network
-interface and details about the network you want to advertise.
+## Odposlechnuté zprávy
+
+
+# Podvržení RIPng odpovědi
+## Návrh
+## Použití
+Pro odeslání RIPng odpovědi je potřeba jméno rozhraní, na kterém chcete
+poslouchat, a detaily podvrhované cesty (adresa a maska, volitelně pak 'next
+hop', metrika a tag):
 
     ./myripresponse -i IFACE -r NET/MASK [-n NEXT-HOP] [-m METRIC] [-t TAG]
 
-The available options are:
-* `-i IFACE`: mandatory, the name of the interface to send the crafted packet to
-* `-r NET/MASK`: mandatory, address and mask of the advertised network,
-  e.g. `-r 2001:db8:0:abcd::/64`
-* `-n NEXT-HOP`: optional, address of the next hop for the advertised network,
-  will be `::` if not provided
-* `-m METRIC`: optional, the RIP metric, will be 1 if not provided
-* `-t TAG`: optional, router tag, will be 0 if not provided
+Možnosti programu jsou následující:
+* `-i IFACE`: povinné, rozhraní, které se má použít pro odeslání paketu
+* `-r NET/MASK`: povinné, adresa a maska podvrhované sítě (např. `-r 2001:db8:0:abcd::/64`)
+* `-n NEXT-HOP`: volitelné, adresa 'next hop' podvrhované sítě
+* `-m METRIC`: volitelné, RIP metrika sítě, výchozí je 1
+* `-t TAG`: volitelné, tag sítě, výchozí je 0
 
-# RIPng Request
-## Design
-## Usage
+## Útok na RIPng router
 
-# Literature
+# Podvržení RIPng dotazu
+## Návrh
+## Použití
+
+
+# Literatura

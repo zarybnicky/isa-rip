@@ -1,3 +1,9 @@
+/*
+ * ISA18: Tools for monitoring and sniffing RIP messages
+ * FIT VUT Brno
+ * Author: xzaryb00 - Jakub Zarybnický (xzaryb00)
+ */
+
 #ifndef ISA_RIP_H
 #define ISA_RIP_H
 
@@ -18,6 +24,12 @@
 #define	RIPNG_DEST "ff02::9"
 #define RIPNG_PORT 521
 #define RIPNG_PORT_STR "521"
+
+struct riphdr {
+  u_char rip_cmd;
+  u_char rip_ver;
+  u_short rip_domain;
+};
 
 struct rip_entry {
   u_short rip_family;
@@ -40,10 +52,11 @@ struct rip_entry {
     u_char rip_pass[16];
   } body;
 };
-struct riphdr {
-  u_char rip_cmd;
-  u_char rip_ver;
-  u_short rip_domain;
+
+struct rip6hdr {
+  u_char rip6_cmd;
+  u_char rip6_ver;
+  u_short rip6_zeros;
 };
 
 struct rip6_entry {
@@ -52,13 +65,11 @@ struct rip6_entry {
   u_char rip6_prefix;
   u_char rip6_metric;
 };
-struct rip6hdr {
-  u_char rip6_cmd;
-  u_char rip6_ver;
-  u_short rip6_zeros;
-};
 
-static inline char *rip_cmd(u_char cmd) {
+/**
+ * Return the string description of a RIP command constant
+ */
+static inline const char *rip_cmd(u_char cmd) {
   switch (cmd) {
   case RIP_CMD_REQUEST:
     return "Request";
