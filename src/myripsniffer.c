@@ -10,7 +10,6 @@
 #include <pcap.h>
 #include <time.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/ether.h>
@@ -52,16 +51,12 @@ void print_ripv2_entry(struct rip_entry *e) {
     }
     return;
   }
-  if (ntohl(e->body.rip_metric) == RIP_UNREACHABLE) {
-    printf("unreachable");
-  } else {
-    printf("%5u hops, ", ntohl(e->body.rip_metric));
-  }
-  printf("tag %-5u %s", ntohs(e->rip_tag), inet_ntoa(e->body.rip_dest));
-  printf("/%s", inet_ntoa(e->body.rip_mask));
-  printf(" -> %s", inet_ntoa(e->body.rip_next_hop));
+  printf("%8s, tag %-5u", rip_hops(ntohl(e->body.rip_metric)), ntohs(e->rip_tag));
+  printf(" %s/%s -> ", inet_ntoa(e->body.rip_dest), inet_ntoa(e->body.rip_mask));
   if (e->body.rip_next_hop.s_addr == 0) {
-    printf(" (originator)");
+    printf("originator");
+  } else {
+    printf("%s", inet_ntoa(e->body.rip_next_hop));
   }
   if (ntohs(e->rip_family) != AF_INET) {
     printf(" (family %d)", ntohs(e->rip_family));
@@ -72,49 +67,34 @@ void print_ripv2_entry(struct rip_entry *e) {
 void print_ripng_entry(struct rip6_entry *e) {
   char addr[INET6_ADDRSTRLEN];
   if (e->rip6_metric == RIPNG_NEXT_HOP) {
-    printf("            next hop: %s\n",
+    printf("Next hop for the following entries: %s\n",
            inet_ntop(AF_INET6, &e->rip6_dest, addr, INET6_ADDRSTRLEN));
     return;
   }
-  if (e->rip6_metric == RIP_UNREACHABLE) {
-    printf("unreachable ");
-  } else {
-    printf("%5u hops, ", e->rip6_metric);
-  }
-  printf("tag %-5u %s/%d\n",
-         ntohs(e->rip6_tag),
-         inet_ntop(AF_INET6, &e->rip6_dest, addr, INET6_ADDRSTRLEN),
+  printf("%8s, tag %-5u", rip_hops(e->rip6_metric), ntohs(e->rip6_tag));
+  printf(" %s/%d\n", inet_ntop(AF_INET6, &e->rip6_dest, addr, INET6_ADDRSTRLEN),
          e->rip6_prefix);
 }
 
-void print_rip_packet(struct tm *timeinfo, struct ip *ip) {
-  if (ip->ip_p != IPPROTO_UDP) {
-    return;
-  }
-  struct udphdr *udp = (struct udphdr *) (((u_char *) ip) + ip->ip_hl * 4);
-  struct riphdr *rip = (struct riphdr *) (((u_char *) udp) + sizeof(struct udphdr));
+void print_rip_packet(size_t riplen, struct riphdr *rip) {
   struct rip_entry *rip_entry = (struct rip_entry *) (((u_char *) rip) + sizeof(struct riphdr));
-  u_int riplen = ntohs(udp->uh_ulen) - sizeof(struct udphdr);
   u_int entries = (riplen - sizeof(struct riphdr)) / sizeof(struct rip_entry);
-  char time[30];
-  strftime(time, 30, "%F %T", timeinfo);
 
-  //Header: version, command, number of entries, (domain), source addr, time received
-  printf("[%s] RIPv%d %s with %d items", time, rip->rip_ver, rip_cmd(rip->rip_cmd), entries);
+  //RIPng header
+  printf("RIPv%d %s with %d items", rip->rip_ver, rip_cmd(rip->rip_cmd), entries);
   if (rip->rip_ver == 2) {
     printf(", domain %-4d", rip->rip_domain);
   }
-  printf("\nSrc IP: %s  src port: %d  dest port: %d\n",
-         inet_ntoa(ip->ip_src), ntohs(udp->uh_sport), ntohs(udp->uh_dport));
+  printf("\n");
 
   //Semantics of the packet
   if (entries == 1 &&
       ntohs(rip_entry->rip_family) == 0 &&
       ntohl(rip_entry->body.rip_metric) == RIP_UNREACHABLE) {
-    printf("   (request for the whole routing table)\n");
+    printf("Request for the whole routing table\n");
   }
 
-  //Dumping the entries
+  //Dump the entries
   for (; entries > 0; entries -= 1, rip_entry++) {
     if (rip->rip_ver == 2) {
       print_ripv2_entry(rip_entry);
@@ -122,56 +102,65 @@ void print_rip_packet(struct tm *timeinfo, struct ip *ip) {
       print_ripv1_entry(rip_entry);
     }
   }
-  printf("\n");
 }
 
-void print_ripng_packet(struct tm *timeinfo, struct ip6_hdr *ip6) {
-  if (ip6->ip6_nxt != IPPROTO_UDP) {
-    //Ignoring IPv6 extensions
-    return;
-  }
-  struct udphdr *udp = (struct udphdr *) (((u_char *) ip6) + sizeof(struct ip6_hdr));
-  struct rip6hdr *rip6 = (struct rip6hdr *) (((u_char *) udp) + sizeof(struct udphdr));
+void print_ripng_packet(size_t riplen, struct rip6hdr *rip6) {
   struct rip6_entry *rip6_entry = (struct rip6_entry *) (((u_char *) rip6) + sizeof(struct rip6hdr));
-  u_int riplen = ntohs(udp->uh_ulen) - sizeof(struct udphdr);
   u_int entries = (riplen - sizeof(struct rip6hdr)) / sizeof(struct rip6_entry);
-  char addr[INET6_ADDRSTRLEN], time[30];
-  strftime(time, 30, "%F %T", timeinfo);
 
-  //Header: version, command, number of entries, source addr, time received
-  printf("[%s] RIPng %-8s with %d items\n", time, rip_cmd(rip6->rip6_cmd), entries);
-  printf("Src IP: %s  src port: %d  dest port: %d\n",
-         inet_ntop(AF_INET6, &ip6->ip6_src, addr, INET6_ADDRSTRLEN),
-         ntohs(udp->uh_sport), ntohs(udp->uh_dport));
+  //RIP header
+  printf("RIPng %s with %d items\n", rip_cmd(rip6->rip6_cmd), entries);
 
   //Semantics of the packet
   if (entries == 1 &&
       rip6_entry->rip6_tag == 0 &&
       rip6_entry->rip6_metric == RIP_UNREACHABLE &&
       IN6_IS_ADDR_UNSPECIFIED(&rip6_entry->rip6_dest)) {
-    printf("   (request for the whole routing table)\n");
+    printf("Request for the whole routing table\n");
   }
 
-  //Dumping the entries
+  //Dump the entries
   for (; entries > 0; entries -= 1, rip6_entry++) {
     print_ripng_entry(rip6_entry);
   }
-  printf("\n");
 }
 
 void sniff_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
   (void) args;
   struct ether_header *eptr = (struct ether_header *) packet;
+  struct ip *ip;
+  struct ip6_hdr *ip6;
+  struct udphdr *udp;
+  char time[30], addr[INET6_ADDRSTRLEN];
+  strftime(time, 30, "%F %T", localtime((time_t *) &header->ts.tv_sec));
 
   switch (ntohs(eptr->ether_type)) {
-  case ETHERTYPE_IP:
-    print_rip_packet(localtime((time_t *) &header->ts.tv_sec),
-                     (struct ip *) (packet + sizeof(struct ether_header)));
+  case ETHERTYPE_IP: // IPv4
+    ip = (struct ip *) (packet + sizeof(struct ether_header));
+    udp = (struct udphdr *) (((u_char *) ip) + sizeof(struct ip));
+    if (ip->ip_p != IPPROTO_UDP) {
+      return;
+    }
+    printf("[%s] from %s at port %d to port %d\n",
+           time, inet_ntoa(ip->ip_src), ntohs(udp->uh_sport), ntohs(udp->uh_dport));
+    print_rip_packet(ntohs(udp->uh_ulen) - sizeof(struct udphdr),
+                     (struct riphdr *) (((u_char *) udp) + sizeof(struct udphdr)));
+    printf("\n");
     break;
 
-  case ETHERTYPE_IPV6:
-    print_ripng_packet(localtime((time_t *) &header->ts.tv_sec),
-                       (struct ip6_hdr *) (packet + sizeof(struct ether_header)));
+  case ETHERTYPE_IPV6: //IPv6
+    ip6 = (struct ip6_hdr *) (packet + sizeof(struct ether_header));
+    udp = (struct udphdr *) (((u_char *) ip6) + sizeof(struct ip6_hdr));
+    if (ip6->ip6_nxt != IPPROTO_UDP) {
+      //Ignoring messages with IPv6 extensions
+      return;
+    }
+    printf("[%s] from %s at port %d to port %d\n",
+           time, inet_ntop(AF_INET6, &ip6->ip6_src, addr, INET6_ADDRSTRLEN),
+           ntohs(udp->uh_sport), ntohs(udp->uh_dport));
+    print_ripng_packet(ntohs(udp->uh_ulen) - sizeof(struct udphdr),
+                       (struct rip6hdr *) (((u_char *) udp) + sizeof(struct udphdr)));
+    printf("\n");
     break;
   }
 }
@@ -211,6 +200,7 @@ int main (int argc, char *argv[]) {
   if (pcap_setfilter(handle, &filter) == -1)
     ERR("pcap_setfilter: %s\n", pcap_geterr(handle));
 
+  //And kicking off the sniffer
   fprintf(stderr, "Listening...\n");
   if (pcap_loop(handle, -1, sniff_handler, NULL) == -1)
     ERR("pcap_loop: %s\n", pcap_geterr(handle));

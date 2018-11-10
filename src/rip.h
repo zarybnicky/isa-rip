@@ -7,6 +7,7 @@
 #ifndef ISA_RIP_H
 #define ISA_RIP_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 
@@ -67,20 +68,43 @@ struct rip6_entry {
 };
 
 /**
- * Return the string description of a RIP command constant
+ * Return the string representation of a RIP command constant
  */
 static inline const char *rip_cmd(u_char cmd) {
   switch (cmd) {
-  case RIP_CMD_REQUEST:
-    return "Request";
-  case RIP_CMD_RESPONSE:
-    return "Response";
-  case RIP_CMD_TRACEON:
-    return "Traceon";
-  case RIP_CMD_TRACEOFF:
-    return "Traceoff";
-  default:
-    return "(unknown)";
+  case RIP_CMD_REQUEST:  return "Request";
+  case RIP_CMD_RESPONSE: return "Response";
+  case RIP_CMD_TRACEON:  return "Traceon";
+  case RIP_CMD_TRACEOFF: return "Traceoff";
+  default:               return "(unknown)";
+  }
+}
+
+/**
+ * Return the string representation of the number of hops in RIP
+ *
+ * (Yes, this is an ugly hack, but better than malloc-ing a string.)
+ */
+static inline const char *rip_hops(u_char hops) {
+  switch (hops) {
+  case RIP_UNREACHABLE: return "unreach";
+  case 15:              return "15 hops";
+  case 14:              return "14 hops";
+  case 13:              return "13 hops";
+  case 12:              return "12 hops";
+  case 11:              return "11 hops";
+  case 10:              return "10 hops";
+  case  9:              return "9 hops";
+  case  8:              return "8 hops";
+  case  7:              return "7 hops";
+  case  6:              return "6 hops";
+  case  5:              return "5 hops";
+  case  4:              return "4 hops";
+  case  3:              return "3 hops";
+  case  2:              return "2 hops";
+  case  1:              return "1 hops";
+  case  0:              return "0 hops";
+  default:              return "unknown";
   }
 }
 
