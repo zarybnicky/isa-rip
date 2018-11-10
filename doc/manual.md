@@ -7,7 +7,7 @@ documentclass: report
 
 # Úvod do RIP
 ## RIPv1
-@pizza2000identification
+@rfc1058 @rfc1388 @rfc2082 @rfc2453 @rfc4822 @rfc2080 @getaddrinfo @beej @tcpdump
 
 ## RIPv2
 ## RIPng

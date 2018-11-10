@@ -12,8 +12,8 @@ all: $(EXE)
 manual: manual.pdf
 %.pdf: doc/%.md doc/%.bib
 	pandoc --variable papersize=a4paper \
-		--filter pandoc-citeproc \
 		--bibliography=$(word 2,$^) \
+		--csl doc/cambridge-university-press-author-date.csl \
 		--number-sections \
 		--table-of-contents \
 		-s -f markdown $< -o $@
