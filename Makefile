@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS+=-Wall -g
+CFLAGS+=-Wall -g -std=gnu99
 LDFLAGS+=-lpcap
 EXE=myripsniffer myripresponse myriprequest
 DEP=$(patsubst %.c,%.d,$(wildcard src/*.c))
@@ -7,7 +7,7 @@ DEP=$(patsubst %.c,%.d,$(wildcard src/*.c))
 all: $(EXE)
 
 %: src/%.c
-	$(CC) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+	$(CC) $< -o $@ $(CFLAGS) $(LDFLAGS)
 
 manual: manual.pdf
 %.pdf: doc/%.md doc/%.bib
