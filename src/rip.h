@@ -1,7 +1,9 @@
-/*
+/**
  * ISA18: Tools for monitoring and sniffing RIP messages
  * FIT VUT Brno
  * Author: xzaryb00 - Jakub Zarybnický (xzaryb00)
+ *
+ * RIP definitions - structures, constants, simple inline printers
  */
 
 #ifndef ISA_RIP_H
@@ -83,7 +85,7 @@ static inline const char *rip_cmd(u_char cmd) {
 /**
  * Return the string representation of the number of hops in RIP
  *
- * (Yes, this is an ugly hack, but better than malloc-ing a string.)
+ * (Yes, this is an ugly hack, but simpler than malloc-ing a string.)
  */
 static inline const char *rip_hops(u_char hops) {
   switch (hops) {
@@ -102,7 +104,7 @@ static inline const char *rip_hops(u_char hops) {
   case  4:              return "4 hops";
   case  3:              return "3 hops";
   case  2:              return "2 hops";
-  case  1:              return "1 hops";
+  case  1:              return "1 hop";
   case  0:              return "0 hops";
   default:              return "unknown";
   }
