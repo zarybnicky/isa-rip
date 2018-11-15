@@ -1,9 +1,9 @@
 Nástroje monitorující a generující zprávy jednoduchých distance-vector protokolů
 ISA 2018/19, FIT, VUT Brno
-Auhor: Jakub Zarybnický (xzaryb00)
+Autor: Jakub Zárybnický (xzaryb00)
 
 
-C9lem tohoto projektu je vytvořit tři programy: myripsniffer, myripresponse, and myriprequest.
+Cílem tohoto projektu je vytvořit tři programy: myripsniffer, myripresponse a myriprequest.
 
 `myripsniffer` používá libpcap pro zachycování tisk RIPv1/v2/ng zpráv.
 Příklad použití: `./myripsniffer -i eth0`
@@ -12,7 +12,7 @@ Příklad použití: `./myripsniffer -i eth0`
 Příklad použití: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
 
 `myriprequest` posílá RIP dotaz - při specifikování `-r` na to konkrétní sít,
-jinak na celou routovací tabulku routeru.
+jinak na celou směrovací tabulku routeru.
 Příklad použití: `./myriprequest -i eth0 -r 2001:db8:0:abcd::/64`
 
 
@@ -23,12 +23,11 @@ Pro sestavení programu stačí použít přiložený Makefile:
 
 
 Tento archiv obsahuje následující soubory:
-* README - toto readme
-* manual.pdf - obsahuje popis RIP, implementace programů a další náležitosti dle zadání
+* README
 * Makefile
-* src/rip.h
-* src/myriprequest.c
-* src/myripresponse.c
-* src/myripsniffer.c - zdrojové kódy programů
+* src/*.h, src/*.c - zdrojové kódy programů
+* manual.pdf - obsahuje popis RIP, implementace programů a další náležitosti dle zadání
+* doc/assignment.md - zadání převedené do Markdownu
 * doc/manual.md - zdrojový text manuálu
 * doc/manual.bib - BibTeX bibliografie k manuálu
+* doc/cambridge-university-press-author-date.csl - Citeproc šablona pro bibliografii

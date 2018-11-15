@@ -2,15 +2,18 @@ CC=gcc
 CFLAGS+=-Wall -g -std=gnu99
 LDFLAGS+=-lpcap
 EXE=myripsniffer myripresponse myriprequest
+ARCHIVE=xzaryb00.tar
 
 all: $(EXE)
 
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $^ $(LDFLAGS)
 myripsniffer: src/myripsniffer.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 myriprequest: src/myriprequest.o src/socket.o src/utils.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 myripresponse: src/myripresponse.o src/socket.o src/utils.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 manual: manual.pdf
 %.pdf: doc/%.md doc/%.bib
@@ -40,4 +43,9 @@ test-combined: test/onlyrip-isa.pcapng
 test-md5: test/rip-md5.pcapng
 	sudo tcpreplay -i lo -tK $<
 
-.PHONY: all clean manual test-ripv1 test-ripv2 test-ripng test-combined test-md5
+archive: $(ARCHIVE)
+$(ARCHIVE): manual
+	tar cvf $@ README Makefile src/*.h src/*.c manual.pdf doc/manual.md \
+	doc/assignment.md doc/cambridge-university-press-author-date.csl doc/manual.bib
+
+.PHONY: all archive clean manual test-ripv1 test-ripv2 test-ripng test-combined test-md5
