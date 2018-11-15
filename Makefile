@@ -7,9 +7,9 @@ all: $(EXE)
 
 myripsniffer: src/myripsniffer.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-myriprequest: src/myriprequest.o src/socket.o
+myriprequest: src/myriprequest.o src/socket.o src/utils.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-myripresponse: src/myripresponse.o src/socket.o
+myripresponse: src/myripresponse.o src/socket.o src/utils.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 manual: manual.pdf

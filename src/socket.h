@@ -12,7 +12,6 @@
 #include <net/if.h>
 #include <netdb.h>
 #include <string.h>
-#include <stdio.h>
 #include <unistd.h>
 #include "rip.h"
 #include "utils.h"

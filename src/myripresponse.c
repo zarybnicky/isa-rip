@@ -10,8 +10,8 @@
 #define USAGE "Usage: %s -i INTERFACE -r IPv6/MASK [-n IPv6] [-m METRIC] [-t TAG]\n"
 
 int main(int argc, char *argv[]) {
-  int opt;
-  char *prefix = NULL, *interface = NULL;
+  int opt, got_route;
+  char *interface = NULL;
 
   struct rip6hdr header = { .rip6_cmd = RIP_CMD_RESPONSE, .rip6_ver = 1 };
   struct rip6_entry entry = { .rip6_metric = 1 };
@@ -21,18 +21,9 @@ int main(int argc, char *argv[]) {
   while ((opt = getopt(argc, argv, "i:r:n:m:t:")) != -1) {
     switch (opt) {
     case 'r': //Address and prefix
-      //Split optarg at forward slash
-      prefix = strchr(optarg, '/');
-      if (prefix == NULL)
-        ERR("The separator slash is missing in the specified network\n");
-      prefix[0] = '\0';
-      prefix += 1;
-      //Now the \0-terminated address is in `optarg` and prefix is in `prefix`
-      if (inet_pton(AF_INET6, optarg, &entry.rip6_dest) < 1)
-        ERR("The specified network doesn't contain a valid IPv6 address\n");
-      entry.rip6_prefix = parse_number("prefix", prefix, 0, 128);
+      parse_address_mask(optarg, &entry.rip6_dest, &entry.rip6_prefix);
+      got_route = 1;
       break;
-
     case 'i': //Interface (parsing happens later)
       interface = optarg;
       break;
@@ -53,7 +44,7 @@ int main(int argc, char *argv[]) {
   }
   if (interface == NULL)
     ERR_USAGE("Missing required option `-i interface`\n");
-  if (prefix == NULL)
+  if (!got_route)
     ERR_USAGE("Missing required option `-r IPv6/MASK`\n");
 
   //Copy all three parts into the buffer
@@ -83,18 +74,4 @@ int main(int argc, char *argv[]) {
             sendto(sock, buffer, buflen, 0, (struct sockaddr *) &target, sizeof(target)) < 0);
   printf("OK\n");
   return 0;
-}
-
-
-/**
- * Parse an integer with a range check (exits on error)
- */
-int parse_number(const char *desc, const char *src, int lower, int upper) {
-  char *err = NULL;
-  int result = strtol(src, &err, 10);
-  if (*err != '\0')
-    ERR("The specified %s isn't a valid number\n", desc);
-  if (result < lower || result > upper)
-    ERR("The specified %s is out of range (%d-%d)\n", desc, lower, upper);
-  return result;
 }

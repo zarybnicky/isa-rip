@@ -9,8 +9,6 @@
 #ifndef ISA_RIP_H
 #define ISA_RIP_H
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <netinet/in.h>
 
 #define RIP_FILTER "portrange 520-521 and udp"

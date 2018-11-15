@@ -136,7 +136,7 @@ Struktura programu je relativně jednoduchá -- připravit si obsah zprávy na
 základě zadaných parametrů, nejprve v relevantních strukturách a nakonec v
 bufferu připraveného pro odeslání, nachystat si soket takový, který může
 odesílat UDP data z portu 521 multicastem na adresu `ff02::9` na port 521,
-nastavit IPv6 možnosti multicastu (počet skoků, rozhraní), a nakonec zavolat
+nastavit IPv6 možnosti multicastu (počet skoků, rozhraní) a nakonec zavolat
 `sendto`. (Zkoušel jsem i `sendmsg`, ale pro takové jednoduché použití je
 výsledný kód skoro stejné dlouhý a `sendmsg` kód je trochu hůř čitelný.)
 
@@ -156,10 +156,10 @@ spouštět s oprávněními roota (nebo se správně nastavenými 'capabilities'
 `setcap`).
 
 ## Použití
-Pro odeslání RIPng odpovědi je potřeba jméno rozhraní, na kterém chcete
-poslouchat, a detaily podvrhované cesty (adresa a maska, volitelně pak 'next
-hop', metrika a tag). Program také potřebuje oprávnění roota, je tedy potřeba
-jej spouštět se `sudo` nebo jako root.
+Pro odeslání RIPng odpovědi je potřeba jméno rozhraní, ze kterého chcete paket
+odeslat, a detaily podvrhované cesty (adresa a maska, volitelně pak 'next hop',
+metrika a tag). Program také potřebuje oprávnění roota, je tedy potřeba jej
+spouštět se `sudo` nebo jako root.
 
     ./myripresponse -i IFACE -r NET/MASK [-n NEXT-HOP] [-m METRIC] [-t TAG]
 
@@ -219,7 +219,46 @@ A jako poslední přepis směrovací tabulky z virtuálního stroje se směrova�
 
 # Podvržení RIPng dotazu
 ## Návrh
+Pro implementaci volitelného třetího programu jsem využil funkce z
+`myripresponse` - liší se pouze v počtu argumentů a příkazu odesílané RIP
+zprávy. Program podporuje oba způsoby dotazů - dotaz na celou směrovací tabulku
+při vynechání parametru `-r` (nebo při zadání `-r ::/0`) a dotaz na jednu
+konkrétní cestu při zadání parametru `-r`. 
+
 ## Použití
+Pro odeslání RIPng dotazu je potřeba jméno rozhraní, ze kterého chcete dotaz
+odeslat, a adresu a masku dotazované sítě. Program také potřebuje oprávnění
+roota, je tedy potřeba jej spouštět se `sudo` nebo jako root.
+
+    ./myripresponse -i IFACE -r NET/MASK [-n NEXT-HOP] [-m METRIC] [-t TAG]
+
+Možnosti programu jsou následující:
+
+* `-i IFACE`: povinné, rozhraní, které se má použít pro odeslání paketu
+* `-r NET/MASK`: volitelné, adresa a maska dotazované sítě (např. `-r 2001:db8:0:abcd::/64`)
+
+A ještě ukázka použití `myriprequest` a `myripresponse` těsně za sebou - lze
+vidět výsledek 'útoku' i tady, v poslední zprávě:
+
+    [2018-11-15 22:39:49] from fe80::800:27ff:fe00:0 at port 521 to port 521
+    RIPng Response with 1 items
+       1 hop, tag 0     2001:db8:0:abcd::/64
+
+    [2018-11-15 22:39:51] from fe80::a00:27ff:fe07:dd12 at port 521 to port 521
+    RIPng Response with 5 items
+       1 hop, tag 0     fd00::/64
+       1 hop, tag 0     fd00:0:78::/64
+       1 hop, tag 0     fd00:d4:2df0::/64
+       1 hop, tag 0     fd00:10a:38b8::/64
+       1 hop, tag 0     fd00:900:1230::/64
+
+    [2018-11-15 22:39:55] from fe80::800:27ff:fe00:0 at port 521 to port 521
+    RIPng Request with 1 items
+     unreach, tag 0     2001:db8:0:abcd::/64
+
+    [2018-11-15 22:39:55] from fe80::a00:27ff:fe07:dd12 at port 521 to port 521
+    RIPng Response with 1 items
+      2 hops, tag 0     2001:db8:0:abcd::/64
 
 
 # Literatura

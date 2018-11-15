@@ -11,9 +11,9 @@ Příklad použití: `./myripsniffer -i eth0`
 `myripresponse` posílá podvržené odpovědní zprávy RIPng.
 Příklad použití: `./myripresponse -i eth0 -r 2001:db8:0:abcd::/64`
 
-`myriprequest` (jeho nejjednodušší možná varianta) posílá požadavek na celou routovací
-tabulku všech RIPng routerů v síti.
-Příklad použití: `./myriprequest -i eth0`
+`myriprequest` posílá RIP dotaz - při specifikování `-r` na to konkrétní sít,
+jinak na celou routovací tabulku routeru.
+Příklad použití: `./myriprequest -i eth0 -r 2001:db8:0:abcd::/64`
 
 
 Pro sestavení programu stačí použít přiložený Makefile:
@@ -31,4 +31,4 @@ Tento archiv obsahuje následující soubory:
 * src/myripresponse.c
 * src/myripsniffer.c - zdrojové kódy programů
 * doc/manual.md - zdrojový text manuálu
-* doc/manual.bib - bibliografie manuálu
+* doc/manual.bib - BibTeX bibliografie k manuálu

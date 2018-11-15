@@ -7,16 +7,22 @@
  */
 
 #include "myriprequest.h"
-#define USAGE "Usage: %s -i INTERFACE"
+#define USAGE "Usage: %s -i INTERFACE [-r IPv6/MASK]"
 
 int main (int argc, char *argv[]) {
   int opt;
   char *interface = NULL;
 
-  while ((opt = getopt(argc, argv, "i:")) != -1) {
+  struct rip6hdr header = { .rip6_cmd = RIP_CMD_REQUEST, .rip6_ver = 1 };
+  struct rip6_entry entry = { .rip6_metric = 16 };
+
+  while ((opt = getopt(argc, argv, "i:r:")) != -1) {
     switch (opt) {
-    case 'i':
+    case 'i': //Interface
       interface = optarg;
+      break;
+    case 'r': //Address and prefix
+      parse_address_mask(optarg, &entry.rip6_dest, &entry.rip6_prefix);
       break;
     default:
       fprintf(stderr, USAGE, argv[0]);
@@ -26,10 +32,7 @@ int main (int argc, char *argv[]) {
   if (interface == NULL)
     ERR_USAGE("Missing required option `-i INTERFACE`\n");
 
-  struct rip6hdr header = { .rip6_cmd = RIP_CMD_REQUEST, .rip6_ver = 1 };
-  struct rip6_entry entry = { .rip6_metric = 16 };
-
-  //Copy all three parts into the buffer
+  //Copy both parts into the buffer
   char buffer[512] = { 0 };
   uint buflen = 0;
   memcpy(buffer, &header, sizeof(header));
